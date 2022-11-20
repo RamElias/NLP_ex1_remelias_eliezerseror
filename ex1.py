@@ -47,6 +47,8 @@ def check_word(word):
 
 
 
+
+
 def data_fixed(file):
     text = file.readlines()
     marks_remove(text)
