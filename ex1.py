@@ -1,6 +1,9 @@
 import re
 import numpy as np
+import pandas as pd
 import math
+from numpy.linalg import norm
+import scipy
 
 
 def data_fixed(file):
@@ -33,8 +36,7 @@ def create_matrix():
     rows = get_rows()
     cols = get_cols()
 
-    matrix = []
-    matrix.append(cols)
+    matrix = [cols]
 
     for i in rows:
         matrix.append([i]+[0] * (len(cols)-1))
@@ -61,8 +63,8 @@ def get_cols():
     cols_arr = []
     freq = open("eng_wikipedia_2016_1M-words.txt", 'r', encoding="utf8")
     cols = freq.readlines()
-    cols_arr.append("#")
-    for i in range(50, 100):
+    cols_arr.append("-")
+    for i in range(50, 20051):
         arr = cols[i].split('\t')
         cols_arr.append(arr[1])
 
@@ -104,8 +106,8 @@ def count(simelx, wiki, matrix_hash, size):
 
 def calc_ppmi(frequency_matrix, hash_matrix):
     amount_of_words = 0
-    for i in frequency_matrix:
-        amount_of_words += len(frequency_matrix[i])
+    for i in hash_matrix:
+        amount_of_words += len(hash_matrix[i])
 
     ppmi_matrix = frequency_matrix
 
@@ -120,6 +122,44 @@ def calc_ppmi(frequency_matrix, hash_matrix):
     return ppmi_matrix
 
 
+def cosine_measure(file_name, matrix):
+    data = pd.DataFrame(matrix[1:len(matrix)])
+    data.index = data[0]
+    file = open(file_name, 'w+')
+    simlex = open('EN-SIMLEX-999.txt', 'r', encoding="utf8")
+    lines = simlex.readlines()
+
+    for line in lines:
+        line = line.split('\t')
+        # print(line[0], line[1])
+        word1_vec = data.loc[line[0]].tolist()[1:]
+        word2_vec = data.loc[line[1]].tolist()[1:]
+        # print(norm(word1_vec), norm(word2_vec))
+        result = np.dot(word1_vec, word2_vec)
+        if norm(word1_vec)*norm(word2_vec) == 0:
+            result = 0
+        else:
+            result /= norm(word1_vec)*norm(word2_vec)
+        file.write(line[0] + "\t" + line[1] + "\t" + str(result) + "\n")
+
+
+def get_file_results(file):
+    list = []
+    simlex = open(file, 'r', encoding="utf8")
+    lines = simlex.readlines()
+
+    for line in lines:
+        line.split('\t')
+        list.append(line[2])
+
+    return list
+
+
+def calc_correlation(file, simlex_list):
+    model_list = get_file_results(file)
+    print(stats.spearmanr(simlex_list, model_list))
+
+
 if __name__ == "__main__" :
     file = open("eng_wikipedia_2016_10K-sentences.txt", 'r+', encoding="utf8")
     text = data_fixed(file)
@@ -127,11 +167,17 @@ if __name__ == "__main__" :
     matrix_hash = make_hash_table(text)
 
     fc2 = frequency_counts(matrix, matrix_hash, 2)
-    fc5 = frequency_counts(matrix, matrix_hash, 5)
+    # fc5 = frequency_counts(matrix, matrix_hash, 5)
+    # ppmi2 = calc_ppmi(fc2, matrix_hash)
+    # ppmi5 = calc_ppmi(fc5, matrix_hash)
 
-    ppmi2 = calc_ppmi(fc2, matrix_hash)
-    ppmi5 = calc_ppmi(fc5, matrix_hash)
-    print(ppmi5)
+    cosine_measure('freq_window2.txt', fc2)
+    # cosine_measure('freq_window5.txt', fc5)
+    # cosine_measure('ppmi_window2.txt', ppmi2)
+    # cosine_measure('ppmi_window5.txt', ppmi5)
+
+    simlex_results = get_file_results('EN-SIMLEX-999.txt')
+    calc_correlation('freq_window2.txt', simlex_results)
 
 
 
